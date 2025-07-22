@@ -1,0 +1,5 @@
+praw
+pandas
+openpyxl
+tqdm
+python-dotenv

@@ -1,0 +1,24 @@
+# Hide API secrets
+.env
+
+# Excel files
+*.xls
+*.xlsx
+*.xlsm
+*.xlsb
+*.xltx
+*.xltm
+
+# Python bytecode and cache
+__pycache__/
+*.py[cod]
+
+# VS Code settings (optional)
+.vscode/
+
+# Jupyter notebook checkpoints (if applicable)
+.ipynb_checkpoints/
+
+# Virtual environment folders (if using venv)
+venv/
+env/
