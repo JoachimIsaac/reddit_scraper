@@ -3,14 +3,20 @@ import pandas as pd
 import datetime
 import os
 import time
+import spacy
+import warnings
 from openpyxl import load_workbook
 from dotenv import load_dotenv
-import warnings
 from tqdm import tqdm
 from textblob import TextBlob
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
+
+
 load_dotenv()
+
+# Load spaCy model once
+real_world_entity_parser = spacy.load("en_core_web_sm")
 
 class RedditScraper:
     def __init__(self, subreddit, topics, max_posts=100, max_comments=50):
@@ -37,7 +43,7 @@ class RedditScraper:
     def run(self):
         try:
             self._fetch_posts_and_comments()
-            self.apply_sentiment_analysis()
+            self.transform_data()
             self.load_to_database()
             self.save_to_excel()
         except Exception as e:
@@ -101,6 +107,7 @@ class RedditScraper:
             print(f"❌ Error fetching comments from post {post.id}: {e}")
             time.sleep(5)
 
+
     def _analyze_text_sentiment(self, text):
         """Returns VADER compound polarity and opinion strength based on TextBlob + VADER"""
         if not text:
@@ -118,23 +125,55 @@ class RedditScraper:
             print(f"⚠️ Sentiment analysis failed: {e}")
             return None, None
 
-    def apply_sentiment_analysis(self):
+    def calculate_named_entity_score(self, text):
+        """Scores how grounded a text is by checking real-world references."""
+        if not text:
+            return 0.0
+        text = text.strip()# preserve casing to improve entity detection
+        doc = real_world_entity_parser(text)
+        entity_count = sum(1 for ent in doc.ents if ent.label_ in {"PERSON", "ORG", "GPE", "PRODUCT", "EVENT"})
+        return round(min(entity_count / 5.0, 1.0), 3)  # Normalized to max 1.0
+
+    def calculate_realism_score(self, polarity, opinion_strength):
+        """Measures emotional neutrality and objectivity — realism is higher when polarity and emotion are lower."""
+        if polarity is None or opinion_strength is None:
+            return None
+        return round((1 - abs(polarity)) * (1 - opinion_strength), 3)
+
+    def calculate_plausibility_score(self, text, polarity, opinion_strength):
+        """Combines realism, named entities, polarity, and emotional strength into a plausibility metric."""
+        realism = self.calculate_realism_score(polarity, opinion_strength)
+        named_entity_score = self.calculate_named_entity_score(text)
+        if realism is None:
+            return None
+        plausibility = (
+            0.5 * realism +
+            0.2 * named_entity_score +
+            0.2 * abs(polarity) +
+            0.1 * opinion_strength
+        )
+        return round(plausibility, 3)
+
+
+    def transform_data(self):#may need to name this something else like transform data 
         if self.comments_list:
             print("🧠 Analyzing comment sentiment...")
             for comment in self.comments_list:
-                sentiment_polarity, opinion_strength = self._analyze_text_sentiment(comment.get("body"))
+                body = comment.get("body")
+                sentiment_polarity, opinion_strength = self._analyze_text_sentiment(body)
                 comment["sentiment_polarity"] = sentiment_polarity
                 comment["opinion_strength"] = opinion_strength
+                comment["plausibility_score"] = self.calculate_plausibility_score(body, sentiment_polarity, opinion_strength)
 
         if self.posts_list:
             print("🧠 Analyzing post sentiment...")
             for post in self.posts_list:
-                sentiment_polarity, opinion_strength = self._analyze_text_sentiment(post.get("body"))
+                body = post.get("body")
+                sentiment_polarity, opinion_strength = self._analyze_text_sentiment(body)
                 post["sentiment_polarity"] = sentiment_polarity
                 post["opinion_strength"] = opinion_strength
+                post["plausibility_score"] = self.calculate_plausibility_score(body, sentiment_polarity, opinion_strength)
 
-    def calculate_realism_score(self):
-        pass  # Placeholder for future realism logic
 
     def load_to_database(self, db_config=None):
         pass  # Placeholder for future SQL integration
