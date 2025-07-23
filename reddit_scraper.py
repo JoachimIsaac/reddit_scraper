@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 import warnings
 from tqdm import tqdm
 from textblob import TextBlob
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
 load_dotenv()
 
@@ -24,6 +25,7 @@ class RedditScraper:
             user_agent=os.getenv("REDDIT_USER_AGENT")
         )
 
+        self.vader_analyzer = SentimentIntensityAnalyzer()
         self.posts_list = []
         self.comments_list = []
         self.posts_df = pd.DataFrame()
@@ -100,32 +102,37 @@ class RedditScraper:
             time.sleep(5)
 
     def _analyze_text_sentiment(self, text):
-        """Returns sentiment polarity and subjectivity (converted to objectivity)."""
+        """Returns TextBlob polarity, objectivity, and VADER compound sentiment."""
         if not text:
-            return None, None
+            return None, None, None
         try:
             blob = TextBlob(text)
-            polarity = blob.sentiment.polarity
-            subjectivity = blob.sentiment.subjectivity
-            return polarity, 1 - subjectivity
+            tb_polarity = blob.sentiment.polarity
+            tb_objectivity = 1 - blob.sentiment.subjectivity
+
+            vader_score = self.vader_analyzer.polarity_scores(text)['compound']
+
+            return tb_polarity, tb_objectivity, vader_score
         except Exception as e:
             print(f"⚠️ Sentiment analysis failed: {e}")
-            return None, None
+            return None, None, None
 
     def apply_sentiment_analysis(self):
         if self.comments_list:
             print("🧠 Analyzing comment sentiment...")
             for comment in self.comments_list:
-                polarity, objectivity = self._analyze_text_sentiment(comment.get("body"))
-                comment["sentiment_polarity"] = polarity
-                comment["objectivity_score"] = objectivity
+                tb_sent, tb_obj, vader_sent = self._analyze_text_sentiment(comment.get("body"))
+                comment["TextBlobSentiment"] = tb_sent
+                comment["TextBlobObjectivity"] = tb_obj
+                comment["VADERSentiment"] = vader_sent
 
         if self.posts_list:
             print("🧠 Analyzing post sentiment...")
             for post in self.posts_list:
-                polarity, objectivity = self._analyze_text_sentiment(post.get("body"))
-                post["sentiment_polarity"] = polarity
-                post["objectivity_score"] = objectivity
+                tb_sent, tb_obj, vader_sent = self._analyze_text_sentiment(post.get("body"))
+                post["TextBlobSentiment"] = tb_sent
+                post["TextBlobObjectivity"] = tb_obj
+                post["VADERSentiment"] = vader_sent
 
     def calculate_realism_score(self):
         pass  # Placeholder for future realism logic
@@ -148,12 +155,9 @@ class RedditScraper:
         self.posts_df = pd.DataFrame(self.posts_list)
         self.comments_df = pd.DataFrame(self.comments_list)
 
-        df_posts = self.posts_df
-        df_comments = self.comments_df
-
         with pd.ExcelWriter(filename, engine='openpyxl', mode='w') as writer:
-            df_posts.to_excel(writer, index=False, sheet_name="Posts")
-            df_comments.to_excel(writer, index=False, sheet_name="Comments")
+            self.posts_df.to_excel(writer, index=False, sheet_name="Posts")
+            self.comments_df.to_excel(writer, index=False, sheet_name="Comments")
 
         print(f"💾 Main file updated: {filename}")
         self.posts_list.clear()
