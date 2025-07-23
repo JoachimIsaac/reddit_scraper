@@ -102,37 +102,41 @@ class RedditScraper:
             time.sleep(5)
 
     def _analyze_text_sentiment(self, text):
-        """Returns TextBlob polarity, objectivity, and VADER compound sentiment."""
+        """Returns TextBlob polarity/objectivity and VADER compound/neutral (objectivity)"""
         if not text:
-            return None, None, None
+            return None, None, None, None
         try:
             blob = TextBlob(text)
             tb_polarity = blob.sentiment.polarity
             tb_objectivity = 1 - blob.sentiment.subjectivity
 
-            vader_score = self.vader_analyzer.polarity_scores(text)['compound']
+            vader_scores = self.vader_analyzer.polarity_scores(text)
+            vader_compound = vader_scores["compound"]
+            vader_objectivity = vader_scores["neu"]
 
-            return tb_polarity, tb_objectivity, vader_score
+            return tb_polarity, tb_objectivity, vader_compound, vader_objectivity
         except Exception as e:
             print(f"⚠️ Sentiment analysis failed: {e}")
-            return None, None, None
+            return None, None, None, None
 
     def apply_sentiment_analysis(self):
         if self.comments_list:
             print("🧠 Analyzing comment sentiment...")
             for comment in self.comments_list:
-                tb_sent, tb_obj, vader_sent = self._analyze_text_sentiment(comment.get("body"))
+                tb_sent, tb_obj, vader_sent, vader_obj = self._analyze_text_sentiment(comment.get("body"))
                 comment["TextBlobSentiment"] = tb_sent
                 comment["TextBlobObjectivity"] = tb_obj
                 comment["VADERSentiment"] = vader_sent
+                comment["VADERObjectivity"] = vader_obj
 
         if self.posts_list:
             print("🧠 Analyzing post sentiment...")
             for post in self.posts_list:
-                tb_sent, tb_obj, vader_sent = self._analyze_text_sentiment(post.get("body"))
+                tb_sent, tb_obj, vader_sent, vader_obj = self._analyze_text_sentiment(post.get("body"))
                 post["TextBlobSentiment"] = tb_sent
                 post["TextBlobObjectivity"] = tb_obj
                 post["VADERSentiment"] = vader_sent
+                post["VADERObjectivity"] = vader_obj
 
     def calculate_realism_score(self):
         pass  # Placeholder for future realism logic
