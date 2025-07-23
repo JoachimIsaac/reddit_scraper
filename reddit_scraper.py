@@ -56,7 +56,7 @@ class RedditScraper:
                     "subreddit": post.subreddit.display_name,
                     "score": post.score,
                     "num_comments": post.num_comments,
-                    "created_utc": datetime.datetime.utcfromtimestamp(post.created_utc),
+                    "timestamp": datetime.datetime.utcfromtimestamp(post.created_utc),
                     "author": str(post.author),
                     "url": post.url
                 })
@@ -82,8 +82,8 @@ class RedditScraper:
                     "post_id": post.id,
                     "author": str(comment.author),
                     "body": comment.body,
-                    "created_utc": datetime.datetime.utcfromtimestamp(comment.created_utc),
-                    "word_count": len(comment.body.split()),
+                    "timestamp": datetime.datetime.utcfromtimestamp(comment.created_utc),
+                    "comment_length": len(comment.body.split()),
                     "score": comment.score
                 })
 
@@ -160,3 +160,4 @@ class RedditScraper:
 
     def _timestamp(self):
         return datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
