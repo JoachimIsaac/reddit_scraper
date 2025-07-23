@@ -99,31 +99,33 @@ class RedditScraper:
             print(f"❌ Error fetching comments from post {post.id}: {e}")
             time.sleep(5)
 
+    def _analyze_text_sentiment(self, text):
+        """Returns sentiment polarity and subjectivity (converted to objectivity)."""
+        if not text:
+            return None, None
+        try:
+            blob = TextBlob(text)
+            polarity = blob.sentiment.polarity
+            subjectivity = blob.sentiment.subjectivity
+            return polarity, 1 - subjectivity
+        except Exception as e:
+            print(f"⚠️ Sentiment analysis failed: {e}")
+            return None, None
+
     def apply_sentiment_analysis(self):
         if self.comments_list:
             print("🧠 Analyzing comment sentiment...")
             for comment in self.comments_list:
-                try:
-                    text = comment.get("body")
-                    blob = TextBlob(text)
-                    comment["sentiment_polarity"] = blob.sentiment.polarity
-                except Exception as e:
-                    print(f"⚠️ Failed comment {comment.get('comment_id')}: {e}")
-                    comment["sentiment_polarity"] = None
+                polarity, objectivity = self._analyze_text_sentiment(comment.get("body"))
+                comment["sentiment_polarity"] = polarity
+                comment["objectivity_score"] = objectivity
 
         if self.posts_list:
             print("🧠 Analyzing post sentiment...")
             for post in self.posts_list:
-                try:
-                    text = post.get("body")
-                    if text is None:
-                        post["sentiment_polarity"] = None
-                    else:
-                        blob = TextBlob(text)
-                        post["sentiment_polarity"] = blob.sentiment.polarity
-                except Exception as e:
-                    print(f"⚠️ Failed post {post.get('post_id')}: {e}")
-                    post["sentiment_polarity"] = None
+                polarity, objectivity = self._analyze_text_sentiment(post.get("body"))
+                post["sentiment_polarity"] = polarity
+                post["objectivity_score"] = objectivity
 
     def calculate_realism_score(self):
         pass  # Placeholder for future realism logic
@@ -143,7 +145,6 @@ class RedditScraper:
                 filename = os.path.join("data", f"{base_filename}_{counter}.xlsx")
                 counter += 1
 
-        # Ensure latest processed fields are captured
         self.posts_df = pd.DataFrame(self.posts_list)
         self.comments_df = pd.DataFrame(self.comments_list)
 
