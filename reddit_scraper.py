@@ -7,6 +7,7 @@ from openpyxl import load_workbook
 from dotenv import load_dotenv
 import warnings
 from tqdm import tqdm
+from textblob import TextBlob
 
 load_dotenv()
 
@@ -49,10 +50,15 @@ class RedditScraper:
             search_results = list(self.reddit.subreddit(self.subreddit_name).search(topic, limit=self.max_posts))
 
             for post in tqdm(search_results, desc=f"[{topic[:25]}]", ncols=100):
+                body = getattr(post, "selftext", None)
+                if body == "" or body is None:
+                    body = None
+
                 self.posts_list.append({
                     "topic": topic,
                     "post_id": post.id,
                     "title": post.title,
+                    "body": body,
                     "subreddit": post.subreddit.display_name,
                     "score": post.score,
                     "num_comments": post.num_comments,
@@ -63,8 +69,6 @@ class RedditScraper:
 
                 self._fetch_valid_comments(post, topic)
                 time.sleep(1.5)  # throttle API usage
-
-            self.save_to_excel()  # autosave after each topic
 
     def _fetch_valid_comments(self, post, topic):
         try:
@@ -96,47 +100,55 @@ class RedditScraper:
             time.sleep(5)
 
     def apply_sentiment_analysis(self):
-        """
-        Placeholder method to apply sentiment analysis to self.comments_df
-        """
-        pass
+        if self.comments_list:
+            print("🧠 Analyzing comment sentiment...")
+            for comment in self.comments_list:
+                try:
+                    text = comment.get("body")
+                    blob = TextBlob(text)
+                    comment["sentiment_polarity"] = blob.sentiment.polarity
+                except Exception as e:
+                    print(f"⚠️ Failed comment {comment.get('comment_id')}: {e}")
+                    comment["sentiment_polarity"] = None
+
+        if self.posts_list:
+            print("🧠 Analyzing post sentiment...")
+            for post in self.posts_list:
+                try:
+                    text = post.get("body")
+                    if text is None:
+                        post["sentiment_polarity"] = None
+                    else:
+                        blob = TextBlob(text)
+                        post["sentiment_polarity"] = blob.sentiment.polarity
+                except Exception as e:
+                    print(f"⚠️ Failed post {post.get('post_id')}: {e}")
+                    post["sentiment_polarity"] = None
 
     def calculate_realism_score(self):
-        """
-        Placeholder: meant for child classes (e.g., BlackMirrorScraper)
-        """
-        pass
+        pass  # Placeholder for future realism logic
 
     def load_to_database(self, db_config=None):
-        """
-        Placeholder for loading posts_df and comments_df into SQL DB
-        """
-        pass
+        pass  # Placeholder for future SQL integration
 
     def save_to_excel(self, filename=None):
         if not os.path.exists("data"):
             os.makedirs("data")
 
-        filename = filename or os.path.join("data", self.filename)
-        df_posts = pd.DataFrame(self.posts_list)
-        df_comments = pd.DataFrame(self.comments_list)
+        if not filename:
+            base_filename = os.path.splitext(self.filename)[0]
+            counter = 1
+            filename = os.path.join("data", f"{base_filename}.xlsx")
+            while os.path.exists(filename):
+                filename = os.path.join("data", f"{base_filename}_{counter}.xlsx")
+                counter += 1
 
-        if os.path.exists(filename):
-            try:
-                existing_posts = pd.read_excel(filename, sheet_name="Posts")
-            except ValueError:
-                existing_posts = pd.DataFrame()
+        # Ensure latest processed fields are captured
+        self.posts_df = pd.DataFrame(self.posts_list)
+        self.comments_df = pd.DataFrame(self.comments_list)
 
-            try:
-                existing_comments = pd.read_excel(filename, sheet_name="Comments")
-            except ValueError:
-                existing_comments = pd.DataFrame()
-        else:
-            existing_posts = pd.DataFrame()
-            existing_comments = pd.DataFrame()
-
-        df_posts = pd.concat([existing_posts, df_posts], ignore_index=True)
-        df_comments = pd.concat([existing_comments, df_comments], ignore_index=True)
+        df_posts = self.posts_df
+        df_comments = self.comments_df
 
         with pd.ExcelWriter(filename, engine='openpyxl', mode='w') as writer:
             df_posts.to_excel(writer, index=False, sheet_name="Posts")
@@ -150,14 +162,19 @@ class RedditScraper:
         if not os.path.exists("data"):
             os.makedirs("data")
 
-        timestamped_name = os.path.join("data", f"{self.subreddit_name}_crash_backup_{self._timestamp()}.xlsx")
+        base_name = f"{self.subreddit_name}_crash_backup_{self._timestamp()}"
+        filename = os.path.join("data", f"{base_name}.xlsx")
 
-        with pd.ExcelWriter(timestamped_name, engine='openpyxl') as writer:
+        counter = 1
+        while os.path.exists(filename):
+            filename = os.path.join("data", f"{base_name}_{counter}.xlsx")
+            counter += 1
+
+        with pd.ExcelWriter(filename, engine='openpyxl') as writer:
             self.posts_df.to_excel(writer, index=False, sheet_name="Posts")
             self.comments_df.to_excel(writer, index=False, sheet_name="Comments")
 
-        print(f"🛑 Crash backup saved as {timestamped_name}")
+        print(f"🛑 Crash backup saved as {filename}")
 
     def _timestamp(self):
         return datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-

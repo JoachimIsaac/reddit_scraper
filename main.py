@@ -11,5 +11,5 @@ episodes = [
 ]
 
 if __name__ == "__main__":
-    scraper = BlackMirrorScraper(topics=episodes, max_posts=5, max_comments=3)
+    scraper = BlackMirrorScraper(topics=episodes, max_posts=2, max_comments=3)
     scraper.run()
