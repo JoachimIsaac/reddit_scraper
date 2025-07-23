@@ -147,10 +147,10 @@ class RedditScraper:
         if realism is None:
             return None
         plausibility = (
-            0.5 * realism +
-            0.2 * named_entity_score +
-            0.2 * abs(polarity) +
-            0.1 * opinion_strength
+            0.6 * realism +
+            0.15 * named_entity_score +
+            0.15 * (1 - opinion_strength) +  # Emphasize groundedness
+            0.1 * (1 - abs(polarity))        # Lower polarity = higher plausibility
         )
         return round(plausibility, 3)
 
