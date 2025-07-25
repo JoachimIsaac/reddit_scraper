@@ -221,3 +221,41 @@ class RedditScraper:
 
     def _timestamp(self):
         return datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    
+
+    def run_quality_tests(self):
+        """
+        Manual QA tests for sentiment, opinion, and plausibility scoring logic.
+        Add more test cases if needed.
+        """
+        test_comments = [
+            ("Very positive", "I absolutely love this show! Every episode is a masterpiece."),
+            ("Very negative", "This episode was garbage. I hated every minute of it."),
+            ("Neutral", "The episode aired last night."),
+            ("Sarcastic Positive", "Oh great, another dystopian nightmare. Just what I needed!"),
+            ("Sarcastic Negative", "Wow, what a brilliant plan to ruin everyone's life. Genius move."),
+            ("Strong Opinion", "I strongly believe this is the best episode of the season."),
+            ("Weak Opinion", "Some people might enjoy it, I guess."),
+            ("Objective Fact", "The show has six seasons and each episode is standalone."),
+            ("Plausible", "A politician was blackmailed with deepfake footage. Could happen tomorrow."),
+            ("Implausible", "After dying, he uploads his mind to a cosmic WiFi and becomes a god."),
+            ("Borderline plausible", "What if we could back up our memories like Dropbox?"),
+            ("Ambiguous", "The system knows your crimes before you commit them."),
+        ]
+
+        print("\n🔍 Running QA Tests for Black Mirror Sentiment & Plausibility...\n")
+        for label, text in test_comments:
+            polarity, strength = self._analyze_text_sentiment(text)
+            plausibility = self.calculate_plausibility_score(text, polarity, strength)
+            realism = self.calculate_realism_score(polarity, strength)
+            named_entities = self.calculate_named_entity_score(text)
+
+            print(f"🧪 {label}")
+            print(f"  ➤ Text: {text}")
+            print(f"  ➤ Sentiment Polarity: {polarity:.3f}")
+            print(f"  ➤ Opinion Strength:  {strength:.3f}")
+            print(f"  ➤ Realism Score:     {realism:.3f}")
+            print(f"  ➤ Named Entity Score:{named_entities:.3f}")
+            print(f"  ➤ Plausibility Score:{plausibility:.3f}")
+            print("-" * 60)
+
