@@ -8,14 +8,11 @@ import warnings
 from openpyxl import load_workbook
 from dotenv import load_dotenv
 from tqdm import tqdm
-from textblob import TextBlob
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
-
-
+from textblob import TextBlob
 
 load_dotenv()
 
-# Load spaCy model once
 real_world_entity_parser = spacy.load("en_core_web_sm")
 
 class RedditScraper:
@@ -76,7 +73,7 @@ class RedditScraper:
                 })
 
                 self._fetch_valid_comments(post, topic)
-                time.sleep(1.5)  # throttle API usage
+                time.sleep(1.5)
 
     def _fetch_valid_comments(self, post, topic):
         try:
@@ -107,41 +104,41 @@ class RedditScraper:
             print(f"❌ Error fetching comments from post {post.id}: {e}")
             time.sleep(5)
 
-
-    def _analyze_text_sentiment(self, text):
-        """Returns VADER compound polarity and opinion strength based on TextBlob + VADER"""
+    def analyze_sentiment(self, text):
         if not text:
-            return None, None
+            return None
         try:
-            blob = TextBlob(text)
-            vader_scores = self.vader_analyzer.polarity_scores(text)
-
-            sentiment_polarity = vader_scores["compound"]
-            textblob_subjectivity = blob.sentiment.subjectivity
-            opinion_strength = abs(sentiment_polarity) * textblob_subjectivity
-
-            return sentiment_polarity, opinion_strength
+            scores = self.vader_analyzer.polarity_scores(text)
+            return scores["compound"]
         except Exception as e:
             print(f"⚠️ Sentiment analysis failed: {e}")
-            return None, None
+            return None
 
-    def calculate_named_entity_score(self, text):
-        """Scores how grounded a text is by checking real-world references."""
+    def calculate_opinion_strength(self, text, polarity=None):
         if not text:
-            return 0.0
-        text = text.strip()# preserve casing to improve entity detection
-        doc = real_world_entity_parser(text)
-        entity_count = sum(1 for ent in doc.ents if ent.label_ in {"PERSON", "ORG", "GPE", "PRODUCT", "EVENT"})
-        return round(min(entity_count / 5.0, 1.0), 3)  # Normalized to max 1.0
+            return None
+        try:
+            blob = TextBlob(text)
+            subjectivity = blob.sentiment.subjectivity
+            polarity = polarity if polarity is not None else self.analyze_sentiment(text)
+            return abs(polarity) * subjectivity if polarity is not None else None
+        except Exception as e:
+            print(f"⚠️ Opinion strength calculation failed: {e}")
+            return None
 
     def calculate_realism_score(self, polarity, opinion_strength):
-        """Measures emotional neutrality and objectivity — realism is higher when polarity and emotion are lower."""
         if polarity is None or opinion_strength is None:
             return None
         return round((1 - abs(polarity)) * (1 - opinion_strength), 3)
 
+    def calculate_named_entity_score(self, text):
+        if not text:
+            return 0.0
+        doc = real_world_entity_parser(text.strip())
+        entity_count = sum(1 for ent in doc.ents if ent.label_ in {"PERSON", "ORG", "GPE", "PRODUCT", "EVENT"})
+        return round(min(entity_count / 5.0, 1.0), 3)
+
     def calculate_plausibility_score(self, text, polarity, opinion_strength):
-        """Combines realism, named entities, polarity, and emotional strength into a plausibility metric."""
         realism = self.calculate_realism_score(polarity, opinion_strength)
         named_entity_score = self.calculate_named_entity_score(text)
         if realism is None:
@@ -149,34 +146,36 @@ class RedditScraper:
         plausibility = (
             0.6 * realism +
             0.15 * named_entity_score +
-            0.15 * (1 - opinion_strength) +  # Emphasize groundedness
-            0.1 * (1 - abs(polarity))        # Lower polarity = higher plausibility
+            0.15 * (1 - opinion_strength) +
+            0.1 * (1 - abs(polarity))
         )
         return round(plausibility, 3)
 
+    def transform_data(self):
+        print("🔄 Running default transform_data: sentiment + opinion + plausibility")
 
-    def transform_data(self):#may need to name this something else like transform data 
         if self.comments_list:
-            print("🧠 Analyzing comment sentiment...")
             for comment in self.comments_list:
                 body = comment.get("body")
-                sentiment_polarity, opinion_strength = self._analyze_text_sentiment(body)
-                comment["sentiment_polarity"] = sentiment_polarity
+                polarity = self.analyze_sentiment(body)
+                opinion_strength = self.calculate_opinion_strength(body, polarity)
+                plausibility_score = self.calculate_plausibility_score(body, polarity, opinion_strength)
+                comment["sentiment_polarity"] = polarity
                 comment["opinion_strength"] = opinion_strength
-                comment["plausibility_score"] = self.calculate_plausibility_score(body, sentiment_polarity, opinion_strength)
+                comment["plausibility_score"] = plausibility_score
 
         if self.posts_list:
-            print("🧠 Analyzing post sentiment...")
             for post in self.posts_list:
                 body = post.get("body")
-                sentiment_polarity, opinion_strength = self._analyze_text_sentiment(body)
-                post["sentiment_polarity"] = sentiment_polarity
+                polarity = self.analyze_sentiment(body)
+                opinion_strength = self.calculate_opinion_strength(body, polarity)
+                plausibility_score = self.calculate_plausibility_score(body, polarity, opinion_strength)
+                post["sentiment_polarity"] = polarity
                 post["opinion_strength"] = opinion_strength
-                post["plausibility_score"] = self.calculate_plausibility_score(body, sentiment_polarity, opinion_strength)
-
+                post["plausibility_score"] = plausibility_score
 
     def load_to_database(self, db_config=None):
-        pass  # Placeholder for future SQL integration
+        pass
 
     def save_to_excel(self, filename=None):
         if not os.path.exists("data"):
@@ -221,41 +220,3 @@ class RedditScraper:
 
     def _timestamp(self):
         return datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    
-
-    def run_quality_tests(self):
-        """
-        Manual QA tests for sentiment, opinion, and plausibility scoring logic.
-        Add more test cases if needed.
-        """
-        test_comments = [
-            ("Very positive", "I absolutely love this show! Every episode is a masterpiece."),
-            ("Very negative", "This episode was garbage. I hated every minute of it."),
-            ("Neutral", "The episode aired last night."),
-            ("Sarcastic Positive", "Oh great, another dystopian nightmare. Just what I needed!"),
-            ("Sarcastic Negative", "Wow, what a brilliant plan to ruin everyone's life. Genius move."),
-            ("Strong Opinion", "I strongly believe this is the best episode of the season."),
-            ("Weak Opinion", "Some people might enjoy it, I guess."),
-            ("Objective Fact", "The show has six seasons and each episode is standalone."),
-            ("Plausible", "A politician was blackmailed with deepfake footage. Could happen tomorrow."),
-            ("Implausible", "After dying, he uploads his mind to a cosmic WiFi and becomes a god."),
-            ("Borderline plausible", "What if we could back up our memories like Dropbox?"),
-            ("Ambiguous", "The system knows your crimes before you commit them."),
-        ]
-
-        print("\n🔍 Running QA Tests for Black Mirror Sentiment & Plausibility...\n")
-        for label, text in test_comments:
-            polarity, strength = self._analyze_text_sentiment(text)
-            plausibility = self.calculate_plausibility_score(text, polarity, strength)
-            realism = self.calculate_realism_score(polarity, strength)
-            named_entities = self.calculate_named_entity_score(text)
-
-            print(f"🧪 {label}")
-            print(f"  ➤ Text: {text}")
-            print(f"  ➤ Sentiment Polarity: {polarity:.3f}")
-            print(f"  ➤ Opinion Strength:  {strength:.3f}")
-            print(f"  ➤ Realism Score:     {realism:.3f}")
-            print(f"  ➤ Named Entity Score:{named_entities:.3f}")
-            print(f"  ➤ Plausibility Score:{plausibility:.3f}")
-            print("-" * 60)
-
