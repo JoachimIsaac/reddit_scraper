@@ -2,6 +2,8 @@ import pytest
 from black_mirror_scraper import BlackMirrorScraper  # Adjust path if needed
 import logging
 
+
+
 # Setup
 scraper = BlackMirrorScraper(topics=["test"])
 
@@ -148,6 +150,97 @@ def test_uncertain_expression_opinion_strength():
     strength = scraper.calculate_opinion_strength(text, polarity)
     logging.info(f"[Uncertain Expression] Got strength = {strength:.4f} | Expected: < 0.3")
     assert strength < 0.3
+
+@pytest.mark.opinion
+def test_sarcastic_positive_opinion_strength():
+    text = "Oh great, another disasterpiece. Just what we needed."
+    polarity = scraper.analyze_sentiment(text)
+    strength = scraper.calculate_opinion_strength(text, polarity)
+    logging.info(f"[Sarcastic Positive] Got strength = {strength:.4f} | Expected: > 0.4")
+    assert strength > 0.4
+
+@pytest.mark.opinion
+def test_sarcastic_negative_opinion_strength():
+    text = "Wow, perfect plan! Ruin everything again!"
+    polarity = scraper.analyze_sentiment(text)
+    strength = scraper.calculate_opinion_strength(text, polarity)
+    logging.info(f"[Sarcastic Negative] Got strength = {strength:.4f} | Expected: > 0.4")
+    assert strength > 0.4
+
+@pytest.mark.opinion
+def test_capslock_shouting_opinion_strength():
+    text = "I HATED THIS EPISODE SO MUCH"
+    polarity = scraper.analyze_sentiment(text)
+    strength = scraper.calculate_opinion_strength(text, polarity)
+    logging.info(f"[Capslock Shouting] Got strength = {strength:.4f} | Expected: > 0.5")
+    assert strength > 0.5
+
+@pytest.mark.opinion
+def test_question_opinion_strength():
+    text = "Did anyone else think that was weird?"
+    polarity = scraper.analyze_sentiment(text)
+    strength = scraper.calculate_opinion_strength(text, polarity)
+    logging.info(f"[Question] Got strength = {strength:.4f} | Expected: < 0.3")
+    assert strength < 0.3
+
+@pytest.mark.opinion
+def test_mixed_opinion_strength():
+    text = "This episode was fun but the ending sucked."
+    polarity = scraper.analyze_sentiment(text)
+    strength = scraper.calculate_opinion_strength(text, polarity)
+    logging.info(f"[Mixed] Got strength = {strength:.4f} | Expected: 0.2 <= strength <= 0.6")
+    assert 0.2 <= strength <= 0.6
+
+@pytest.mark.opinion
+def test_negation_softening_opinion_strength():
+    text = "I didn’t like it."
+    polarity = scraper.analyze_sentiment(text)
+    strength = scraper.calculate_opinion_strength(text, polarity)
+    logging.info(f"[Negation Softening] Got strength = {strength:.4f} | Expected: 0.2 <= strength <= 0.5")
+    assert 0.2 <= strength <= 0.5
+
+@pytest.mark.opinion
+def test_double_negative_opinion_strength():
+    text = "It wasn't that bad."
+    polarity = scraper.analyze_sentiment(text)
+    strength = scraper.calculate_opinion_strength(text, polarity)
+    logging.info(f"[Double Negative] Got strength = {strength:.4f} | Expected: 0.1 <= strength <= 0.4")
+    assert 0.1 <= strength <= 0.4
+
+@pytest.mark.opinion
+def test_emoji_heavy_positive_opinion_strength():
+    text = "This was amazing! 😍🔥💯"
+    polarity = scraper.analyze_sentiment(text)
+    strength = scraper.calculate_opinion_strength(text, polarity)
+    logging.info(f"[Emoji Positive] Got strength = {strength:.4f} | Expected: > 0.4")
+    assert strength > 0.4
+
+@pytest.mark.opinion
+def test_emoji_heavy_negative_opinion_strength():
+    text = "This episode sucked 😡🤬"
+    polarity = scraper.analyze_sentiment(text)
+    strength = scraper.calculate_opinion_strength(text, polarity)
+    logging.info(f"[Emoji Negative] Got strength = {strength:.4f} | Expected: > 0.3")
+    assert strength > 0.3
+
+@pytest.mark.opinion
+def test_shouting_emoji_combination_strength():
+    text = "I HATED THIS 😡🤬 IT WAS AWFUL!!!"
+    polarity = scraper.analyze_sentiment(text)
+    strength = scraper.calculate_opinion_strength(text, polarity)
+    logging.info(f"[Shouting + Emoji] Got strength = {strength:.4f} | Expected: > 0.6")
+    assert strength > 0.6
+
+@pytest.mark.opinion
+def test_politely_disagree_opinion_strength():
+    text = "It’s not really my thing, but I can see why others might enjoy it."
+    polarity = scraper.analyze_sentiment(text)
+    strength = scraper.calculate_opinion_strength(text, polarity)
+    logging.info(f"[Polite Dislike] Got strength = {strength:.4f} | Expected: 0.2 <= strength <= 0.5")
+    assert 0.2 <= strength <= 0.5
+
+
+
 
 
 

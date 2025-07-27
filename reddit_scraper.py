@@ -8,7 +8,7 @@ import warnings
 from openpyxl import load_workbook
 from dotenv import load_dotenv
 from tqdm import tqdm
-from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer, BOOSTER_DICT
 from textblob import TextBlob
 
 load_dotenv()
@@ -27,8 +27,146 @@ class RedditScraper:
             client_secret=os.getenv("REDDIT_CLIENT_SECRET"),
             user_agent=os.getenv("REDDIT_USER_AGENT")
         )
-
+        
+        
         self.vader_analyzer = SentimentIntensityAnalyzer()
+
+        self.booster_dict = BOOSTER_DICT
+        # Comprehensive list of hedging words that indicate uncertainty, doubt, or qualification
+        self.hedging_words = {
+            # Basic uncertainty
+            'maybe', 'perhaps', 'possibly', 'probably', 'might', 'could', 'would',
+            'may', 'can', 'should', 'ought', 'must', 'shall',
+            
+            # Appearances and impressions
+            'seems', 'appears', 'looks like', 'sounds like', 'feels like',
+            'strikes me as', 'comes across as', 'gives the impression',
+            
+            # Approximations and qualifiers
+            'sort of', 'kind of', 'somewhat', 'rather', 'quite', 'fairly',
+            'relatively', 'approximately', 'roughly', 'about', 'around',
+            'nearly', 'almost', 'basically', 'essentially', 'virtually',
+            'practically', 'more or less', 'in a way', 'in some ways',
+            
+            # Frequency and typicality
+            'generally', 'usually', 'typically', 'normally', 'ordinarily',
+            'commonly', 'frequently', 'often', 'sometimes', 'occasionally',
+            'rarely', 'seldom', 'hardly ever', 'almost never',
+            
+            # Reported information
+            'supposedly', 'allegedly', 'reportedly', 'apparently', 'ostensibly',
+            'purportedly', 'rumored', 'said to be', 'claimed to be',
+            'believed to be', 'thought to be', 'considered to be',
+            
+            # Assumptions and expectations
+            'presumably', 'assumably', 'presumably', 'presumably',
+            'expected to', 'likely to', 'supposed to', 'meant to',
+            'intended to', 'designed to', 'planned to',
+            
+            # Doubt and skepticism
+            'doubt', 'doubtful', 'questionable', 'uncertain', 'unclear',
+            'ambiguous', 'vague', 'unclear', 'unsettled', 'debatable',
+            'controversial', 'disputed', 'contested', 'arguable',
+            
+            # Conditional language
+            'if', 'assuming', 'provided that', 'given that', 'in case',
+            'contingent on', 'dependent on', 'subject to', 'conditional on',
+            
+            # Softeners and mitigators
+            'a bit', 'a little', 'slightly', 'marginally', 'minimally',
+            'barely', 'scarcely', 'hardly', 'just', 'merely', 'simply',
+            'only', 'merely', 'simply', 'just', 'purely', 'solely',
+            
+            # Comparative uncertainty
+            'more or less', 'better or worse', 'sooner or later',
+            'one way or another', 'for better or worse',
+            
+            # Temporal uncertainty
+            'eventually', 'ultimately', 'finally', 'in the end',
+            'sooner or later', 'one day', 'someday', 'at some point',
+            
+            # Spatial uncertainty
+            'somewhere', 'someplace', 'somewhere around', 'in the area',
+            'in the vicinity', 'nearby', 'close to', 'not far from',
+            
+            # Quantity uncertainty
+            'some', 'several', 'a few', 'a couple', 'a handful',
+            'various', 'varying', 'different', 'diverse', 'assorted',
+            'mixed', 'varied', 'multiple', 'numerous', 'many',
+            
+            # Quality uncertainty
+            'decent', 'reasonable', 'acceptable', 'adequate', 'satisfactory',
+            'passable', 'tolerable', 'bearable', 'manageable', 'workable',
+            
+            # Intensity modifiers
+            'somewhat', 'partially', 'in part', 'to some extent',
+            'to a degree', 'in a sense', 'in some sense', 'in a manner',
+            'in a fashion', 'in a way', 'in some way',
+            
+            # Expert opinion qualifiers
+            'according to', 'based on', 'per', 'as per', 'in accordance with',
+            'in line with', 'consistent with', 'in keeping with',
+            
+            # Personal opinion markers
+            'i think', 'i believe', 'i feel', 'i guess', 'i suppose',
+            'i assume', 'i imagine', 'i reckon', 'i figure', 'i gather',
+            'i understand', 'i hear', 'i see', 'i notice',
+            
+            # Evidence qualifiers
+            'apparently', 'evidently', 'obviously', 'clearly', 'plainly',
+            'manifestly', 'patently', 'undoubtedly', 'indisputably',
+            'unquestionably', 'definitely', 'certainly', 'surely',
+            
+            # Time-based uncertainty
+            'recently', 'lately', 'nowadays', 'these days', 'currently',
+            'presently', 'at present', 'at the moment', 'right now',
+            'for now', 'for the time being', 'temporarily',
+            
+            # Method uncertainty
+            'somehow', 'someway', 'in some way', 'by some means',
+            'through some process', 'via some method', 'using some approach',
+            
+            # Result uncertainty
+            'hopefully', 'ideally', 'preferably', 'ideally', 'optimally',
+            'best case', 'worst case', 'in theory', 'in practice',
+            'in reality', 'in actuality', 'in fact', 'in truth',
+            
+            # Comparative uncertainty
+            'more or less', 'better or worse', 'sooner or later',
+            'one way or another', 'for better or worse', 'like it or not',
+            
+            # Conditional uncertainty
+            'depending on', 'subject to', 'contingent upon', 'based on',
+            'assuming', 'provided that', 'given that', 'if', 'when',
+            'unless', 'except', 'barring', 'failing', 'short of',
+            
+            # Degree uncertainty
+            'to some degree', 'to some extent', 'in part', 'partially',
+            'somewhat', 'rather', 'quite', 'fairly', 'reasonably',
+            'moderately', 'adequately', 'sufficiently', 'appropriately',
+            
+            # Source uncertainty
+            'allegedly', 'supposedly', 'reportedly', 'apparently',
+            'ostensibly', 'purportedly', 'rumored', 'said to be',
+            'claimed to be', 'believed to be', 'thought to be',
+            
+            # Process uncertainty
+            'somehow', 'someway', 'in some way', 'by some means',
+            'through some process', 'via some method', 'using some approach',
+            'in some manner', 'in some fashion', 'in some respect',
+            
+            # Outcome uncertainty
+            'hopefully', 'ideally', 'preferably', 'optimally',
+            'best case', 'worst case', 'in theory', 'in practice',
+            'in reality', 'in actuality', 'in fact', 'in truth',
+            'actually', 'really', 'truly', 'genuinely', 'honestly'
+        }
+
+   
+        self.emoji_df = pd.read_csv("emoji_sentiment_data.csv")
+        self.positive_emojis = set(self.emoji_df[self.emoji_df['sentiment score'] > 0]['Emoji'])
+        self.negative_emojis = set(self.emoji_df[self.emoji_df['sentiment score'] < 0]['Emoji'])
+
         self.posts_list = []
         self.comments_list = []
         self.posts_df = pd.DataFrame()
@@ -121,10 +259,40 @@ class RedditScraper:
             blob = TextBlob(text)
             subjectivity = blob.sentiment.subjectivity
             polarity = polarity if polarity is not None else self.analyze_sentiment(text)
-            return abs(polarity) * subjectivity if polarity is not None else None
+            base_strength = abs(polarity) * subjectivity
+
+            certainty_score = self._certainty_word_boost(text)
+            hedge_penalty = self._hedging_penalty(text)
+            emphasis_boost = self._text_emphasis_boost(text)
+            emoji_boost = self._emoji_sentiment_boost(text)
+       
+
+            strength = base_strength * (1 + certainty_score + emoji_boost + emphasis_boost - hedge_penalty)
+            return min(max(strength, 0.0), 1.0)
         except Exception as e:
             print(f"⚠️ Opinion strength calculation failed: {e}")
             return None
+
+    def _certainty_word_boost(self, text):
+        words = text.lower().split()
+        return 0.1 * sum(1 for word in words if word in self.booster_dict)
+
+    def _hedging_penalty(self, text):
+        text_lower = text.lower()
+        return 0.1 * sum(1 for word in self.hedging_words if word in text_lower)
+
+    def _text_emphasis_boost(self, text):
+        boost = 0.0
+        if text.isupper():
+            boost += 0.1
+        if "!" in text:
+            boost += 0.1
+        return boost
+
+    def _emoji_sentiment_boost(self, text):
+        positive_hits = sum(e in text for e in self.positive_emojis)
+        negative_hits = sum(e in text for e in self.negative_emojis)
+        return 0.1 * (positive_hits - negative_hits)
 
     def calculate_realism_score(self, polarity, opinion_strength):
         if polarity is None or opinion_strength is None:
