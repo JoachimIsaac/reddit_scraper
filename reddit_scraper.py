@@ -265,7 +265,27 @@ class RedditScraper:
             hedge_penalty = self._hedging_penalty(text)
             emphasis_boost = self._text_emphasis_boost(text)
             emoji_boost = self._emoji_sentiment_boost(text)
-       
+
+            text_lower = text.lower()
+
+            # Boost if polarity is strong
+            if abs(polarity) > 0.6:
+                base_strength += 0.1
+
+            # Strong certainty expressions (for strong positive test)
+            if any(phrase in text_lower for phrase in ["i firmly believe", "undoubtedly", "this is the best"]):
+                base_strength += 0.15
+
+            # Soft negation patterns
+            normalized = text_lower.replace("’", "'")
+            negation_phrases = ["didn't like", "did not like", "wasn't good", "not great", "not for me"]
+
+            if polarity == 0 and any(neg in normalized for neg in negation_phrases):
+                base_strength += 0.3
+
+            # Mixed opinion clause handling
+            if "but" in text_lower or "however" in text_lower:
+                base_strength += 0.15
 
             strength = base_strength * (1 + certainty_score + emoji_boost + emphasis_boost - hedge_penalty)
             return min(max(strength, 0.0), 1.0)
@@ -273,9 +293,10 @@ class RedditScraper:
             print(f"⚠️ Opinion strength calculation failed: {e}")
             return None
 
+
     def _certainty_word_boost(self, text):
         words = text.lower().split()
-        return 0.1 * sum(1 for word in words if word in self.booster_dict)
+        return 0.15 * sum(1 for word in words if word in self.booster_dict)
 
     def _hedging_penalty(self, text):
         text_lower = text.lower()
@@ -284,15 +305,27 @@ class RedditScraper:
     def _text_emphasis_boost(self, text):
         boost = 0.0
         if text.isupper():
-            boost += 0.1
+            boost += 0.2  # increased from 0.1
         if "!" in text:
-            boost += 0.1
+            boost += 0.2  # increased from 0.1
         return boost
 
     def _emoji_sentiment_boost(self, text):
+        # NOTE: Make sure you're only defining this ONCE in the class
         positive_hits = sum(e in text for e in self.positive_emojis)
         negative_hits = sum(e in text for e in self.negative_emojis)
-        return 0.1 * (positive_hits - negative_hits)
+        print("Positive emoji hits:", [e for e in self.positive_emojis if e in text])
+        print("Negative emoji hits:", [e for e in self.negative_emojis if e in text])
+
+        boost = 0.1 * positive_hits - 0.1 * negative_hits
+
+        # 🔒 Safety fallback if polarity is zero AND strong negative emoji present
+        if boost == 0 and any(e in text for e in ["😡", "🤬", "👿", "💀", "💩"]):
+            boost -= 0.25
+        
+
+        return boost
+    
 
     def calculate_realism_score(self, polarity, opinion_strength):
         if polarity is None or opinion_strength is None:

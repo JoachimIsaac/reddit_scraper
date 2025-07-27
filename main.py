@@ -13,4 +13,4 @@ episodes = [
 if __name__ == "__main__":
     scraper = BlackMirrorScraper(topics=episodes, max_posts=2, max_comments=2)
     scraper.run()
-    #scraper.run_quality_tests()
+    #print(scraper._emoji_sentiment_boost(" 😍💀😆🤬👍👎😊😡I HATED THIS 😡🤬 IT WAS AWFUL!!! 😍🔥💯😄😆 The visuals were cool 😍 but the story sucked 💩😊🥰👍👏🎉✨🌟 😡🤬👿💀💩👎😤😠😭😣😫😩 "))
