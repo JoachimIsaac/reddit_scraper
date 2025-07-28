@@ -7,7 +7,13 @@ episodes = [
     "Nosedive", "Playtest", "Shut Up and Dance", "San Junipero", "Men Against Fire", "Hated in the Nation",
     "USS Callister", "Arkangel", "Crocodile", "Hang the DJ", "Metalhead", "Black Museum",
     "Striking Vipers", "Smithereens", "Rachel, Jack and Ashley Too",
-    "Joan Is Awful", "Loch Henry", "Beyond the Sea", "Mazey Day", "Demon 79"
+    "Joan Is Awful", "Loch Henry", "Beyond the Sea", "Mazey Day", "Demon 79",
+    "Common People",       # S7‑1
+    "Bête Noire",          # S7‑2
+    "Hotel Reverie",       # S7‑3
+    "Plaything",           # S7‑4
+    "Eulogy",              # S7‑5
+    "USS Callister: Into Infinity"  # S7‑6 (sequel to USS Callister)
 ]
 
 if __name__ == "__main__":

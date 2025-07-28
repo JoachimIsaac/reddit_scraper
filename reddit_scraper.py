@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 from tqdm import tqdm
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer, BOOSTER_DICT
 from textblob import TextBlob
+import re as regex
 
 load_dotenv()
 
@@ -242,6 +243,7 @@ class RedditScraper:
             print(f"❌ Error fetching comments from post {post.id}: {e}")
             time.sleep(5)
 
+
     def analyze_sentiment(self, text):
         if not text:
             return None
@@ -251,6 +253,7 @@ class RedditScraper:
         except Exception as e:
             print(f"⚠️ Sentiment analysis failed: {e}")
             return None
+
 
     def calculate_opinion_strength(self, text, polarity=None):
         if not text:
@@ -267,21 +270,28 @@ class RedditScraper:
             emoji_boost = self._emoji_sentiment_boost(text)
 
             text_lower = text.lower()
+            normalized = text_lower.replace("’", "'").strip()
 
             # Boost if polarity is strong
             if abs(polarity) > 0.6:
                 base_strength += 0.1
 
-            # Strong certainty expressions (for strong positive test)
-            if any(phrase in text_lower for phrase in ["i firmly believe", "undoubtedly", "this is the best"]):
-                base_strength += 0.15
+            # Pattern-based: certainty verb + superlative adjective
+            certainty_verbs = ["believe", "know", "guarantee", "stand by", "swear", "firmly think", "can confirm"]
+            superlatives = ["best", "worst", "greatest", "most amazing", "least enjoyable", "biggest", "craziest"]
+            if any(v in text_lower for v in certainty_verbs) and any(s in text_lower for s in superlatives):
+                base_strength += 0.1
 
-            # Soft negation patterns
-            normalized = text_lower.replace("’", "'")
-            negation_phrases = ["didn't like", "did not like", "wasn't good", "not great", "not for me"]
-
-            if polarity == 0 and any(neg in normalized for neg in negation_phrases):
+            # Soft negation pattern (expanded)
+            negated_verbs = [
+                "like", "love", "enjoy", "recommend", "prefer",
+                "appreciate", "stand", "tolerate", "hate", "support"
+            ]
+            if polarity == 0 and any(f"didn't {v}" in normalized for v in negated_verbs):
                 base_strength += 0.3
+
+            if polarity == 0 and any(f"wasn't {adj}" in normalized for adj in ["great", "amazing", "terrible", "bad", "funny", "interesting"]):
+                base_strength += 0.2
 
             # Mixed opinion clause handling
             if "but" in text_lower or "however" in text_lower:
@@ -289,10 +299,11 @@ class RedditScraper:
 
             strength = base_strength * (1 + certainty_score + emoji_boost + emphasis_boost - hedge_penalty)
             return min(max(strength, 0.0), 1.0)
+
         except Exception as e:
             print(f"⚠️ Opinion strength calculation failed: {e}")
             return None
-
+        
 
     def _certainty_word_boost(self, text):
         words = text.lower().split()
@@ -310,8 +321,9 @@ class RedditScraper:
             boost += 0.2  # increased from 0.1
         return boost
 
+
     def _emoji_sentiment_boost(self, text):
-        # NOTE: Make sure you're only defining this ONCE in the class
+        text = text.strip()
         positive_hits = sum(e in text for e in self.positive_emojis)
         negative_hits = sum(e in text for e in self.negative_emojis)
         print("Positive emoji hits:", [e for e in self.positive_emojis if e in text])
@@ -319,12 +331,15 @@ class RedditScraper:
 
         boost = 0.1 * positive_hits - 0.1 * negative_hits
 
-        # 🔒 Safety fallback if polarity is zero AND strong negative emoji present
-        if boost == 0 and any(e in text for e in ["😡", "🤬", "👿", "💀", "💩"]):
-            boost -= 0.25
-        
+        # Refined fallback logic
+        if boost == 0:
+            if negative_hits > 0:
+                boost -= 0.3
+            elif positive_hits > 0:
+                boost += 0.3
 
         return boost
+
     
 
     def calculate_realism_score(self, polarity, opinion_strength):
@@ -351,6 +366,90 @@ class RedditScraper:
             0.1 * (1 - abs(polarity))
         )
         return round(plausibility, 3)
+    
+
+    def calculate_plausibility_score_v2(self, text, polarity=None, strength=None):
+        text = text.lower().strip()
+
+        # Expanded keyword banks
+        real_world_tech = {
+            "ai", "artificial intelligence", "machine learning", "neuralink", "elon musk",
+            "facebook", "meta", "google", "deepfake", "facial recognition", "data mining",
+            "surveillance", "tiktok", "social credit", "credit score", "china", "government",
+            "algorithm", "privacy breach", "drones", "apple", "iphone", "gps", "blockchain",
+            "neural implants", "neural implant", "rating system", "data tracking", "metadata",
+            "facial scanner", "data collection", "implant", "chip", "biometrics"
+        }
+
+        logic_indicators = {
+            "could happen", "can happen", "might happen", "i can see this", "already happening",
+            "already doing", "they're doing", "literally doing", "is literally what", "definitely happening",
+            "likely in the future", "makes sense", "because", "due to", "as a result", "if this continues",
+            "this is happening", "not far off", "not far from reality", "i wouldn't be surprised",
+            "they're building it", "this is basically", "this could totally happen", "totally possible",
+            "feels like", "the future is", "could actually happen", "we’ll all have", "this episode nailed it"
+        }
+
+        fantasy_flags = {
+            "aliens", "soul", "telepathy", "implanted memories", "clone wars",
+            "the moon is alive", "reptilian", "ghost", "afterlife", "simulation",
+            "psychic", "mind reading", "time traveler", "resurrected", "immortal",
+            "upload soul", "parallel universe", "alternate dimension"
+        }
+
+        # Scores
+        tech_score = sum(1 for word in real_world_tech if word in text)
+        logic_score = sum(1 for phrase in logic_indicators if phrase in text)
+        fantasy_penalty = sum(1 for word in fantasy_flags if word in text)
+
+        # Entity score using spaCy
+        doc = real_world_entity_parser(text)
+        entity_score = sum(1 for ent in doc.ents if ent.label_ in {"PERSON", "ORG", "GPE", "PRODUCT"})
+        entity_score = min(entity_score, 3)
+
+        # Proper noun signal (adds a tiny nudge)
+        proper_noun_boost = 0.05 if sum(1 for token in doc if token.pos_ == "PROPN") >= 2 else 0
+
+        # Real-world actor bonus (slightly increases plausibility)
+        if any(x in text for x in ["elon", "bezos", "zuckerberg", "nsa", "cia", "facebook", "apple"]):
+            real_actor_bonus = 0.1
+        else:
+            real_actor_bonus = 0
+
+        # Sarcasm-based fallback
+        sarcasm_bonus = 0
+        if polarity is not None and strength is not None:
+            if polarity < 0 and strength > 0.4:
+                if any(x in text for x in ["sure", "totally", "never lie", "obviously not corrupt", "trustworthy folks", "oh sure", "as if"]):
+                    sarcasm_bonus += 0.2
+
+        # Soft realism cues (boost for generic plausible phrasing)
+        soft_realism = 0
+        if any(x in text for x in ["not sure how realistic", "seems real", "imagine if", "hits hard", "fiction but", "wild but true", "already a thing", "happening now"]):
+            soft_realism += 0.2
+
+        # Final score
+        score = (
+            0.3 * tech_score +
+            0.35 * logic_score +
+            0.25 * entity_score -
+            0.4 * fantasy_penalty +
+            sarcasm_bonus +
+            soft_realism +
+            proper_noun_boost +
+            real_actor_bonus
+        )
+
+        # Floor bump for “engaged” speech even if no features triggered
+        if score == 0 and polarity and strength:
+            score += 0.1
+
+        print(f"📊 TECH: {tech_score}, LOGIC: {logic_score}, ENT: {entity_score}, FANTASY: {fantasy_penalty}, SARCASM: {sarcasm_bonus}, SOFT: {soft_realism}, PROPN: {proper_noun_boost}, REAL: {real_actor_bonus}")
+        print(f"🔎 FINAL: {score}")
+
+        return max(0, min(round(score, 2), 5))
+    
+
 
     def transform_data(self):
         print("🔄 Running default transform_data: sentiment + opinion + plausibility")
@@ -360,7 +459,7 @@ class RedditScraper:
                 body = comment.get("body")
                 polarity = self.analyze_sentiment(body)
                 opinion_strength = self.calculate_opinion_strength(body, polarity)
-                plausibility_score = self.calculate_plausibility_score(body, polarity, opinion_strength)
+                plausibility_score = self.calculate_plausibility_score_v2(body, polarity, opinion_strength)
                 comment["sentiment_polarity"] = polarity
                 comment["opinion_strength"] = opinion_strength
                 comment["plausibility_score"] = plausibility_score
@@ -370,7 +469,7 @@ class RedditScraper:
                 body = post.get("body")
                 polarity = self.analyze_sentiment(body)
                 opinion_strength = self.calculate_opinion_strength(body, polarity)
-                plausibility_score = self.calculate_plausibility_score(body, polarity, opinion_strength)
+                plausibility_score = self.calculate_plausibility_score_v2(body, polarity, opinion_strength)
                 post["sentiment_polarity"] = polarity
                 post["opinion_strength"] = opinion_strength
                 post["plausibility_score"] = plausibility_score
