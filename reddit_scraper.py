@@ -309,9 +309,11 @@ class RedditScraper:
         words = text.lower().split()
         return 0.15 * sum(1 for word in words if word in self.booster_dict)
 
+
     def _hedging_penalty(self, text):
         text_lower = text.lower()
         return 0.1 * sum(1 for word in self.hedging_words if word in text_lower)
+
 
     def _text_emphasis_boost(self, text):
         boost = 0.0
@@ -347,12 +349,15 @@ class RedditScraper:
             return None
         return round((1 - abs(polarity)) * (1 - opinion_strength), 3)
 
+
+
     def calculate_named_entity_score(self, text):
         if not text:
             return 0.0
         doc = real_world_entity_parser(text.strip())
         entity_count = sum(1 for ent in doc.ents if ent.label_ in {"PERSON", "ORG", "GPE", "PRODUCT", "EVENT"})
         return round(min(entity_count / 5.0, 1.0), 3)
+
 
     def calculate_plausibility_score(self, text, polarity, opinion_strength):
         realism = self.calculate_realism_score(polarity, opinion_strength)
@@ -369,6 +374,10 @@ class RedditScraper:
     
 
     def calculate_plausibility_score_v2(self, text, polarity=None, strength=None):
+        
+        if not text:
+            return None  # Skip scoring for empty or missing text
+        
         text = text.lower().strip()
 
         # Expanded keyword banks
@@ -451,6 +460,39 @@ class RedditScraper:
     
 
 
+    def label_sentiment(self, score):
+        if score is None:
+            return None
+        if score > 0.3:
+            return "Positive"
+        elif score < -0.3:
+            return "Negative"
+        else:
+            return "Neutral"
+
+
+    def label_opinion_strength(self, score):
+        if score is None:
+            return None
+        if score > 0.5:
+            return "Strong"
+        elif score < 0.1:
+            return "Weak"
+        else:
+            return "Mixed"
+
+
+    def label_plausibility(self, score):
+        if score is None:
+            return None
+        if score >= 0.6:
+            return "High"
+        elif score >= 0.3:
+            return "Medium"
+        else:
+            return "Low"
+
+
     def transform_data(self):
         print("🔄 Running default transform_data: sentiment + opinion + plausibility")
 
@@ -460,9 +502,15 @@ class RedditScraper:
                 polarity = self.analyze_sentiment(body)
                 opinion_strength = self.calculate_opinion_strength(body, polarity)
                 plausibility_score = self.calculate_plausibility_score_v2(body, polarity, opinion_strength)
+
                 comment["sentiment_polarity"] = polarity
+                comment["sentiment_label"] = self.label_sentiment(polarity)
+
                 comment["opinion_strength"] = opinion_strength
+                comment["opinion_label"] = self.label_opinion_strength(opinion_strength)
+
                 comment["plausibility_score"] = plausibility_score
+                comment["plausibility_label"] = self.label_plausibility(plausibility_score)
 
         if self.posts_list:
             for post in self.posts_list:
@@ -470,9 +518,20 @@ class RedditScraper:
                 polarity = self.analyze_sentiment(body)
                 opinion_strength = self.calculate_opinion_strength(body, polarity)
                 plausibility_score = self.calculate_plausibility_score_v2(body, polarity, opinion_strength)
+
                 post["sentiment_polarity"] = polarity
+                post["sentiment_label"] = self.label_sentiment(polarity)
+
                 post["opinion_strength"] = opinion_strength
+                post["opinion_label"] = self.label_opinion_strength(opinion_strength)
+
                 post["plausibility_score"] = plausibility_score
+                post["plausibility_label"] = self.label_plausibility(plausibility_score)
+
+
+
+
+
 
     def load_to_database(self, db_config=None):
         pass
