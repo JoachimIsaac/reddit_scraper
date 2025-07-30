@@ -1,0 +1,59 @@
+body,actual,predicted,label_type,sheet,row_index
+I absolutely love this show! It's perfect.,Positive,Neutral,Sentiment,CuratedExamples,0
+This was amazing! 😍🔥💯,Positive,Neutral,Sentiment,CuratedExamples,1
+It wasn't that bad.,Positive,Neutral,Sentiment,CuratedExamples,2
+This was horrible. I hated every second.,Negative,Neutral,Sentiment,CuratedExamples,3
+This episode sucked 😡🤬,Negative,Neutral,Sentiment,CuratedExamples,4
+I HATED THIS 😡🤬 IT WAS AWFUL!!!,Negative,Neutral,Sentiment,CuratedExamples,5
+I firmly believe this is the best episode ever made.,Positive,Neutral,Sentiment,CuratedExamples,9
+THIS WAS SO GOOD OMG,Positive,Neutral,Sentiment,CuratedExamples,10
+This is absolutely the worst episode I've ever seen.,Negative,Neutral,Sentiment,CuratedExamples,11
+This episode was fun but the ending sucked.,Mixed,Neutral,Sentiment,CuratedExamples,15
+"Loved the aesthetic, plot was meh.",Mixed,Neutral,Sentiment,CuratedExamples,16
+Feels like China is already building this system.,Negative,Neutral,Sentiment,CuratedExamples,17
+This could totally happen with how TikTok tracks data.,Negative,Neutral,Sentiment,CuratedExamples,18
+"If this keeps going, we’ll all have rating chips by 2030.",Negative,Neutral,Sentiment,CuratedExamples,19
+"Not sure how realistic this is, but it's wild.",Mixed,Neutral,Sentiment,CuratedExamples,22
+This episode proves the aliens are real.,Positive,Neutral,Sentiment,CuratedExamples,23
+They’ve implanted memories in us already. Wake up.,Negative,Neutral,Sentiment,CuratedExamples,24
+The moon is listening to our thoughts.,Negative,Neutral,Sentiment,CuratedExamples,25
+"Oh great, another disasterpiece. Just what we needed.",Sarcastic,Neutral,Sentiment,CuratedExamples,26
+"Wow, perfect plan! Ruin everything again!",Sarcastic,Neutral,Sentiment,CuratedExamples,27
+😍🔥💯,Positive,Neutral,Sentiment,CuratedExamples,28
+I absolutely love this show! It's perfect.,Strong,Weak,Opinion Strength,CuratedExamples,0
+This was amazing! 😍🔥💯,Strong,Weak,Opinion Strength,CuratedExamples,1
+It wasn't that bad.,Mixed,Weak,Opinion Strength,CuratedExamples,2
+This was horrible. I hated every second.,Strong,Weak,Opinion Strength,CuratedExamples,3
+I HATED THIS 😡🤬 IT WAS AWFUL!!!,Strong,Weak,Opinion Strength,CuratedExamples,5
+The episode was released last year.,Mixed,Weak,Opinion Strength,CuratedExamples,6
+"It’s not really my thing, but I can see why others might enjoy it.",Mixed,Weak,Opinion Strength,CuratedExamples,8
+I firmly believe this is the best episode ever made.,Strong,Weak,Opinion Strength,CuratedExamples,9
+THIS WAS SO GOOD OMG,Strong,Weak,Opinion Strength,CuratedExamples,10
+This is absolutely the worst episode I've ever seen.,Strong,Weak,Opinion Strength,CuratedExamples,11
+This episode was fun but the ending sucked.,Mixed,Weak,Opinion Strength,CuratedExamples,15
+"Loved the aesthetic, plot was meh.",Mixed,Weak,Opinion Strength,CuratedExamples,16
+Feels like China is already building this system.,Strong,Weak,Opinion Strength,CuratedExamples,17
+This could totally happen with how TikTok tracks data.,Strong,Weak,Opinion Strength,CuratedExamples,18
+"If this keeps going, we’ll all have rating chips by 2030.",Mixed,Weak,Opinion Strength,CuratedExamples,19
+Imagine if you could rate people in real life… oh wait.,Mixed,Weak,Opinion Strength,CuratedExamples,20
+This episode proves the aliens are real.,Mixed,Weak,Opinion Strength,CuratedExamples,23
+They’ve implanted memories in us already. Wake up.,Strong,Weak,Opinion Strength,CuratedExamples,24
+The moon is listening to our thoughts.,Mixed,Weak,Opinion Strength,CuratedExamples,25
+"Oh great, another disasterpiece. Just what we needed.",Strong,Weak,Opinion Strength,CuratedExamples,26
+"Wow, perfect plan! Ruin everything again!",Strong,Weak,Opinion Strength,CuratedExamples,27
+This is just fiction lol.,Mixed,Weak,Opinion Strength,CuratedExamples,29
+I absolutely love this show! It's perfect.,High,Medium,Plausibility,CuratedExamples,0
+This was horrible. I hated every second.,Low,Medium,Plausibility,CuratedExamples,3
+This episode sucked 😡🤬,Low,Medium,Plausibility,CuratedExamples,4
+I HATED THIS 😡🤬 IT WAS AWFUL!!!,Low,Medium,Plausibility,CuratedExamples,5
+I firmly believe this is the best episode ever made.,High,Medium,Plausibility,CuratedExamples,9
+This is absolutely the worst episode I've ever seen.,Low,Medium,Plausibility,CuratedExamples,11
+Feels like China is already building this system.,High,Medium,Plausibility,CuratedExamples,17
+This could totally happen with how TikTok tracks data.,High,Medium,Plausibility,CuratedExamples,18
+"If this keeps going, we’ll all have rating chips by 2030.",High,Medium,Plausibility,CuratedExamples,19
+This episode proves the aliens are real.,Low,Medium,Plausibility,CuratedExamples,23
+They’ve implanted memories in us already. Wake up.,Low,Medium,Plausibility,CuratedExamples,24
+The moon is listening to our thoughts.,Low,Medium,Plausibility,CuratedExamples,25
+"Oh great, another disasterpiece. Just what we needed.",Low,Medium,Plausibility,CuratedExamples,26
+"Wow, perfect plan! Ruin everything again!",Low,Medium,Plausibility,CuratedExamples,27
+This is just fiction lol.,Low,Medium,Plausibility,CuratedExamples,29

@@ -1,5 +1,6 @@
 import pandas as pd
 import joblib
+import os
 
 def load_model(path):
     return joblib.load(path)
@@ -15,16 +16,31 @@ def process_sheet(sheet_df, sentiment_model, opinion_model, plausibility_model):
     sheet_df = predict(sheet_df, plausibility_model, "predicted_plausibility")
     return sheet_df
 
-def main():
-    input_path = "data_to_predict/blackmirror_data.xlsx"  # Or whatever name you give it
-    output_path = "predictions/predicted_blackmirror_data.xlsx"  # New file with predictions
+def get_next_output_path(base_path):
+    base_name = os.path.splitext(os.path.basename(base_path))[0]
+    folder = os.path.dirname(base_path)
+    counter = 1
 
-    # Load all 3 models
+    while True:
+        numbered_path = os.path.join(folder, f"{base_name}_{counter}.xlsx")
+        if not os.path.exists(numbered_path):
+            return numbered_path
+        counter += 1
+
+def main():
+    # Prompt user for input file path
+    input_path = input("Enter the path to the Excel file you want to label (e.g. data_to_predict/curated_examples.xlsx): ").strip()
+
+    if not os.path.exists(input_path):
+        print(f"❌ File not found: {input_path}")
+        return
+
+    # Load models
     sentiment_model = load_model("models/sentiment_model.pkl")
     opinion_model = load_model("models/opinion_model.pkl")
     plausibility_model = load_model("models/plausibility_model.pkl")
 
-    # Load both sheets
+    # Load sheets
     xl = pd.read_excel(input_path, sheet_name=None)
     predicted_data = {}
 
@@ -36,7 +52,12 @@ def main():
         else:
             print(f"⚠️ Skipping sheet {sheet_name} — no 'body' column found.")
 
-    # Save back to a new Excel file, with the same sheet names
+    # Determine new output path
+    base_output_path = "predictions/predicted_blackmirror_data.xlsx"
+    output_path = get_next_output_path(base_output_path)
+
+    # Save predictions
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
     with pd.ExcelWriter(output_path) as writer:
         for sheet_name, df in predicted_data.items():
             df.to_excel(writer, sheet_name=sheet_name, index=False)
